@@ -174,79 +174,6 @@ namespace StreamCompaction {
             cudaFree(d_blockOffset);
         }
 
-
-        void scan_temp(int n, int* odata, const int* idata) {
-            // TODO
-            // Pad
-            int pad_n = 1 << ilog2ceil(n);
-
-            // Assign hreads and blocks
-            int threads = 1024;
-            int blocks = (pad_n / 2 + threads - 1) / threads; // ceil
-
-            // Allocate memory on host
-            int* blockSum = new int[blocks];
-            int* blockOffset = new int[blocks];
-
-            // Allocate & copy memory on device
-            int* d_odata, * d_idata, * d_blockSum, * d_blockOffset;
-
-            cudaMalloc(&d_odata, pad_n * sizeof(int));
-            checkCUDAError("Efficient::scan::cudaMalloc d_odata fails!");
-
-            cudaMalloc(&d_idata, pad_n * sizeof(int));
-            checkCUDAError("Efficient::scan::cudaMalloc d_idata fails!");
-
-            cudaMalloc(&d_blockSum, blocks * sizeof(int));
-            checkCUDAError("Efficient::scan::cudaMalloc d_blockSum fails!");
-
-            cudaMalloc(&d_blockOffset, blocks * sizeof(int));
-            checkCUDAError("Efficient::scan::cudaMalloc d_blockOffset fails!");
-
-            cudaMemset(d_idata, 0, pad_n * sizeof(int));
-            checkCUDAError("Efficient::scan::cudaMemset d_idata fails!");
-
-            cudaMemcpy(d_idata, idata, n * sizeof(int), cudaMemcpyHostToDevice);
-            checkCUDAError("Efficient::scan::cudaMemcpyHostToDevice fails!");
-
-            // Handle array of arbitrary length - create and set blockSum
-            cudaMemset(d_blockSum, 0, blocks * sizeof(int)); // Initialize the sum to 0
-            checkCUDAError("Efficient::scan::cudaMemset d_blockSum fails!");
-
-            // Call kernEfficientScan
-            kernEfficientScan << <blocks, threads, 2 * threads * sizeof(int) >> > (pad_n, d_odata, d_idata, d_blockSum);
-            checkCUDAError("Efficient::scan::kernEfficientScan fails!");
-
-            // Handle array of arbitrary length - scan the blockSum (on CPU)
-            cudaMemcpy(blockSum, d_blockSum, blocks * sizeof(int), cudaMemcpyDeviceToHost);
-            checkCUDAError("Efficient::scan::cudaMemcpyDeviceToHost fails!");
-
-            blockOffset[0] = 0;
-            for (int i = 1; i < blocks; ++i) {
-                blockOffset[i] = blockOffset[i - 1] + blockSum[i - 1];
-            }
-
-            // Handle array of arbitrary length - add the offset back to array
-            cudaMemcpy(d_blockOffset, blockOffset, blocks * sizeof(int), cudaMemcpyHostToDevice);
-            checkCUDAError("Efficient::scan::cudaMemcpyHostToDevice fails!");
-
-            // Call kernAddBlockOffset
-            kernAddBlockOffset << <blocks, threads >> > (pad_n, d_odata, d_blockOffset);
-            checkCUDAError("Efficient::scan::kernAddBlockOffset fails!");
-
-            // Copy the value back
-            cudaMemcpy(odata, d_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
-            checkCUDAError("Efficient::scan::cudaMemcpyDeviceToHost fails!");
-
-            delete[] blockSum;
-            delete[] blockOffset;
-            cudaFree(d_idata);
-            cudaFree(d_odata);
-            cudaFree(d_blockSum);
-            cudaFree(d_blockOffset);
-        }
-
-
         /**
          * Performs stream compaction on idata, storing the result into odata.
          * All zeroes are discarded.
@@ -279,20 +206,20 @@ namespace StreamCompaction {
             cudaMemcpy(d_idata, idata, n * sizeof(int), cudaMemcpyHostToDevice);
             checkCUDAError("Efficient::compact::cudaMemcpyHostToDevice fails!");
 
-            timer().startGpuTimer();
+            //timer().startGpuTimer();
 
             // Create boolean array
             Common::kernMapToBoolean<<<blocks, threads>>>(n, d_bools, d_idata);
             checkCUDAError("Efficient::compact::kernMapToBoolean fails!");
 
             // Create indices array through exclusive scan
-            scan_temp(n, d_indices, d_bools);
+            scan(n, d_indices, d_bools);
 
             // Scatter
             Common:: kernScatter<<<blocks, threads>>>(n, d_odata, d_idata, d_bools, d_indices);
             checkCUDAError("Efficient::compact::kernScatter fails!");
 
-            timer().endGpuTimer();
+            //timer().endGpuTimer();
 
             cudaMemcpy(odata, d_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
             checkCUDAError("Efficient::compact::cudaMemcpyDeviceToHost fails!");

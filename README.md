@@ -68,6 +68,80 @@ temp[bi + bankOffsetB] = idata[blockStart + bi];
 
 ### 2.3. Radix Sort
 ### 2.4. Thrust::remove_if
+I also implemented stream compaction using Thrust in `Thrust::compact` with the `thrust::remove_if` function. The code is placed in `thrust.cu`, and I added tests at the end of `main.cpp` to compare it with my own implementations.
 
 
 ## 3. Performance Analysis
+### Scan
+![](images/graph1.png)
+For smaller array sizes, CPU performs better than GPU due to lower overhead in launching kernels and managing memory transfers. However, as the array size grows, the parallelism of the GPU becomes more effective, and all GPU algorithms begin to perform better than CPU. Among the GPU implementations, the work-efficient scan consistently works faster than the naive version, while Thrust achieves the best performance overall. 
+
+I think my algorithm involves a lot of memory copying between the CPU and GPU, which is slow. In addition, threads are not fully utilized during the tree traversals.
+
+### Stream Compaction
+![](images/graph2.png)
+Stream compaction shows similar pattern - for smaller array size, CPU performs better. When the array size become larger, the cost of CPU grows much more faster, and GPU algorithms beats the CPU's. Thrust still performs better. 
+
+I think except the slower performance in `Efficient::scan`, repeated memory allocation also hurts performance. Since `scan` is called within `compact`, and both functions allocate device memory for `idata` and `odata`, this results in redundant allocations.
+
+### Test output (array size: 2^24)
+```
+****************
+** SCAN TESTS **
+****************
+    [  42   9  15  33   8  18  37  14  42  25  30  39  39 ...  35   0 ]
+==== cpu scan, power-of-two ====
+   elapsed time: 9.4693ms    (std::chrono Measured)
+    [   0  42  51  66  99 107 125 162 176 218 243 273 312 ... 410808967 410809002 ]
+==== cpu scan, non-power-of-two ====
+   elapsed time: 10.0322ms    (std::chrono Measured)
+    [   0  42  51  66  99 107 125 162 176 218 243 273 312 ... 410808882 410808928 ]
+    passed
+==== naive scan, power-of-two ====
+   elapsed time: 7.18131ms    (CUDA Measured)
+    passed
+==== naive scan, non-power-of-two ====
+   elapsed time: 7.04205ms    (CUDA Measured)
+    passed
+==== work-efficient scan, power-of-two ====
+   elapsed time: 3.99462ms    (CUDA Measured)
+    passed
+==== work-efficient scan, non-power-of-two ====
+   elapsed time: 4.29261ms    (CUDA Measured)
+    passed
+==== thrust scan, power-of-two ====
+   elapsed time: 1.66093ms    (CUDA Measured)
+    passed
+==== thrust scan, non-power-of-two ====
+   elapsed time: 1.4336ms    (CUDA Measured)
+    passed
+
+*****************************
+** STREAM COMPACTION TESTS **
+*****************************
+    [   0   1   3   3   0   0   1   2   2   3   2   1   3 ...   1   0 ]
+==== cpu compact without scan, power-of-two ====
+   elapsed time: 34.5797ms    (std::chrono Measured)
+    [   1   3   3   1   2   2   3   2   1   3   1   3   1 ...   2   1 ]
+    passed
+==== cpu compact without scan, non-power-of-two ====
+   elapsed time: 33.8107ms    (std::chrono Measured)
+    [   1   3   3   1   2   2   3   2   1   3   1   3   1 ...   3   1 ]
+    passed
+==== cpu compact with scan ====
+   elapsed time: 98.8601ms    (std::chrono Measured)
+    [   1   3   3   1   2   2   3   2   1   3   1   3   1 ...   2   1 ]
+    passed
+==== work-efficient compact, power-of-two ====
+   elapsed time: 13.392ms    (CUDA Measured)
+    passed
+==== work-efficient compact, non-power-of-two ====
+   elapsed time: 12.5718ms    (CUDA Measured)
+    passed
+==== thrust compact, power-of-two ====
+   elapsed time: 1.41328ms    (CUDA Measured)
+    passed
+==== thrust compact, non-power-of-two ====
+   elapsed time: 1.44829ms    (CUDA Measured)
+    passed
+```
