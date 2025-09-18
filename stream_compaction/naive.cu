@@ -120,9 +120,7 @@ namespace StreamCompaction {
             cudaMemcpy(odata, d_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
             checkCUDAError("Naive::cudaMemcpyDeviceToHost fails!");
 
-            //for (int i = 1020; i < 1030; ++i) {
-            //    std::cout << "index " << i << ": " << odata[i] << std::endl;
-            //}
+            timer().endGpuTimer();
 
             delete[] blockSum;
             delete[] blockOffset;
@@ -130,8 +128,6 @@ namespace StreamCompaction {
             cudaFree(d_odata);
             cudaFree(d_blockSum);
             cudaFree(d_blockOffset);
-
-            timer().endGpuTimer();
         }
     }
 }
