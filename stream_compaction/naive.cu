@@ -63,32 +63,37 @@ namespace StreamCompaction {
          * Performs prefix-sum (aka scan) on idata, storing the result into odata.
          */
         void scan(int n, int *odata, const int *idata) {
-            timer().startGpuTimer();
             // TODO
             int threads = 1024;
             int blocks = (n + threads - 1) / threads; // ceil
             
-            // Allocate & copy memory
-            int* d_odata, *d_idata;
+            // Allocate memory on host
+            int* blockSum = new int[blocks];
+            int* blockOffset = new int[blocks];
+
+            // Allocate & copy memory on device
+            int* d_odata, *d_idata, *d_blockSum, *d_blockOffset;
             
             cudaMalloc(&d_odata, n * sizeof(int));
             checkCUDAError("Naive::cudaMalloc d_odata fails!");
 
             cudaMalloc(&d_idata, n * sizeof(int));
             checkCUDAError("Naive::cudaMalloc d_idata fails!");
+
+            cudaMalloc(&d_blockSum, blocks * sizeof(int));
+            checkCUDAError("Naive::cudaMalloc d_blockSum fails!");
+
+            cudaMalloc(&d_blockOffset, blocks * sizeof(int));
+            checkCUDAError("Naive::cudaMalloc d_blockOffset fails!");
             
             cudaMemcpy(d_idata, idata, n * sizeof(int), cudaMemcpyHostToDevice);
             checkCUDAError("Naive::cudaMemcpyHostToDevice fails!");
 
             // Handle array of arbitrary length - create and set blockSum
-            int* blockSum = new int[blocks];
-
-            int* d_blockSum;
-            cudaMalloc(&d_blockSum, blocks * sizeof(int));
-            checkCUDAError("Naive::cudaMalloc d_blockSum fails!");
-
             cudaMemset(d_blockSum, 0, blocks * sizeof(int)); // Initialize the sum to 0
             checkCUDAError("Naive::cudaMemset d_blockSum fails!");
+
+            timer().startGpuTimer();
 
             // Call kernNaiveScan
             kernNaiveScan<<<blocks, threads, 2 * threads * sizeof(int)>>>(n, d_odata, d_idata, d_blockSum);
@@ -98,17 +103,12 @@ namespace StreamCompaction {
             cudaMemcpy(blockSum, d_blockSum, blocks * sizeof(int), cudaMemcpyDeviceToHost);
             checkCUDAError("Naive::cudaMemcpyDeviceToHost fails!");
 
-            int* blockOffset = new int[blocks];
             blockOffset[0] = 0;
             for (int i = 1; i < blocks; ++i) {
                 blockOffset[i] = blockOffset[i - 1] + blockSum[i - 1];
             }
 
             // Handle array of arbitrary length - add the offset back to array
-            int* d_blockOffset;
-            cudaMalloc(&d_blockOffset, blocks * sizeof(int));
-            checkCUDAError("Naive::cudaMalloc d_blockOffset fails!");
-
             cudaMemcpy(d_blockOffset, blockOffset, blocks * sizeof(int), cudaMemcpyHostToDevice);
             checkCUDAError("Naive::cudaMemcpyHostToDevice fails!");
 
@@ -116,11 +116,11 @@ namespace StreamCompaction {
             kernAddBlockOffset<<<blocks, threads>>>(n, d_odata, d_blockOffset);
             checkCUDAError("Naive::kernAddBlockOffset fails!");
 
+            timer().endGpuTimer();
+
             // Copy the value back
             cudaMemcpy(odata, d_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
             checkCUDAError("Naive::cudaMemcpyDeviceToHost fails!");
-
-            timer().endGpuTimer();
 
             delete[] blockSum;
             delete[] blockOffset;
