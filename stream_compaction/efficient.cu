@@ -163,10 +163,6 @@ namespace StreamCompaction {
             int threads = 1024;
             int blocks = (n + threads - 1) / threads; // ceil
 
-            // Allocate memory on host
-            int* bools = new int[n];
-            int* indices = new int[n];
-
             // Allocate memory on device
             int* d_odata, *d_idata, *d_bools, *d_indices;
 
@@ -189,16 +185,8 @@ namespace StreamCompaction {
             Common::kernMapToBoolean<<<blocks, threads>>>(n, d_bools, d_idata);
             checkCUDAError("Efficient::compact::kernMapToBoolean fails!");
 
-            // Copy boolean array to host
-            cudaMemcpy(bools, d_bools, n * sizeof(int), cudaMemcpyDeviceToHost); 
-            checkCUDAError("Efficient::compact::cudaMemcpyDeviceToHost fails!");
-
             // Create indices array through exclusive scan
-            scan(n, indices, bools);
-
-            // Copy indices array to device
-            cudaMemcpy(d_indices, indices, n * sizeof(int), cudaMemcpyHostToDevice);
-            checkCUDAError("Efficient::compact::cudaMemcpyHostToDevice fails!");
+            scan(n, d_indices, d_bools);
 
             // Scatter
             Common:: kernScatter<<<blocks, threads>>>(n, d_odata, d_idata, d_bools, d_indices);
@@ -207,12 +195,14 @@ namespace StreamCompaction {
             cudaMemcpy(odata, d_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
             checkCUDAError("Efficient::compact::cudaMemcpyDeviceToHost fails!");
 
-            int count = indices[n - 1] + bools[n - 1];
+            // Get the count
+            int lastIndex, lastBool;
+            cudaMemcpy(&lastIndex, d_indices + (n - 1), sizeof(int), cudaMemcpyDeviceToHost);
+            cudaMemcpy(&lastBool, d_bools + (n - 1), sizeof(int), cudaMemcpyDeviceToHost);
+            int count = lastIndex + lastBool;
 
             timer().endGpuTimer();
 
-            delete[] bools;
-            delete[] indices;
             cudaFree(d_odata);
             cudaFree(d_idata);
             cudaFree(d_bools);
