@@ -48,7 +48,7 @@ namespace StreamCompaction {
 
             // Write block sum
             if (threadIdx.x == blockDim.x - 1 || id == n - 1) {
-                int blockEnd = (n < (blockIdx.x + 1) * blockDim.x) ? n : ((blockIdx.x + 1) * blockDim.x); // last global index in this block
+                int blockEnd = (n < (blockIdx.x + 1) * size) ? n : ((blockIdx.x + 1) * size); // last global index in this block
                 blockSum[blockIdx.x] = odata[blockEnd - 1] + idata[blockEnd - 1];
             }
         }
@@ -114,10 +114,15 @@ namespace StreamCompaction {
 
             // Call kernAddBlockOffset
             kernAddBlockOffset<<<blocks, threads>>>(n, d_odata, d_blockOffset);
+            checkCUDAError("Naive::kernAddBlockOffset fails!");
 
             // Copy the value back
             cudaMemcpy(odata, d_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
             checkCUDAError("Naive::cudaMemcpyDeviceToHost fails!");
+
+            //for (int i = 1020; i < 1030; ++i) {
+            //    std::cout << "index " << i << ": " << odata[i] << std::endl;
+            //}
 
             delete[] blockSum;
             delete[] blockOffset;
