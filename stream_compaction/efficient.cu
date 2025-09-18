@@ -76,17 +76,24 @@ namespace StreamCompaction {
         void scan(int n, int *odata, const int *idata) {
             timer().startGpuTimer();
             // TODO
+            // Pad
+            int pad_n = 1 << ilog2ceil(n);
+
+            // Assign hreads and blocks
             int threads = 1024;
-            int blocks = (n / 2 + threads - 1) / threads; // ceil
-            
+            int blocks = (pad_n / 2 + threads - 1) / threads; // ceil
+
             // Allocate & copy memory
             int* d_odata, *d_idata;
             
-            cudaMalloc(&d_odata, n * sizeof(int));
+            cudaMalloc(&d_odata, pad_n * sizeof(int));
             checkCUDAError("Efficient::cudaMalloc d_odata fails!");
 
-            cudaMalloc(&d_idata, n * sizeof(int));
+            cudaMalloc(&d_idata, pad_n * sizeof(int));
             checkCUDAError("Efficient::cudaMalloc d_idata fails!");
+
+            cudaMemset(d_idata, 0, pad_n * sizeof(int));
+            checkCUDAError("Efficient::cudaMemset d_idata fails!");
             
             cudaMemcpy(d_idata, idata, n * sizeof(int), cudaMemcpyHostToDevice);
             checkCUDAError("Efficient::cudaMemcpyHostToDevice fails!");
@@ -102,7 +109,7 @@ namespace StreamCompaction {
             checkCUDAError("Efficient::cudaMemset d_blockSum fails!");
 
             // Call kernEfficientScan
-            kernEfficientScan<<<blocks, threads, 2 * threads * sizeof(int)>>>(n, d_odata, d_idata, d_blockSum);
+            kernEfficientScan<<<blocks, threads, 2 * threads * sizeof(int)>>>(pad_n, d_odata, d_idata, d_blockSum);
             checkCUDAError("Efficient::kernEfficientScan fails!");
 
             // Handle array of arbitrary length - scan the blockSum (on CPU)
@@ -124,7 +131,7 @@ namespace StreamCompaction {
             checkCUDAError("Efficient::cudaMemcpyHostToDevice fails!");
 
             // Call kernAddBlockOffset
-            kernAddBlockOffset<<<blocks, threads>>>(n, d_odata, d_blockOffset);
+            kernAddBlockOffset<<<blocks, threads>>>(pad_n, d_odata, d_blockOffset);
             checkCUDAError("Efficient::kernAddBlockOffset fails!");
 
             // Copy the value back
