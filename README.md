@@ -130,68 +130,69 @@ The memory throughput in thrust kernels is very high, meaning that data is loade
 ****************
 ** SCAN TESTS **
 ****************
-    [  10  38  12   1  38  44  32  22  13  18  29  18  27 ...   5   0 ]
+    [  46  10  13  38   0  15  26  33  48  46   2  37  47 ...  37   0 ]
 ==== cpu scan, power-of-two ====
-   elapsed time: 10.3416ms    (std::chrono Measured)
-    [   0  10  48  60  61  99 143 175 197 210 228 257 275 ... 410980021 410980026 ]
+   elapsed time: 11.078ms    (std::chrono Measured)
+    [   0  46  56  69 107 107 122 148 181 229 275 277 314 ... 410917379 410917416 ]
 ==== cpu scan, non-power-of-two ====
-   elapsed time: 10.0785ms    (std::chrono Measured)
-    [   0  10  48  60  61  99 143 175 197 210 228 257 275 ... 410979953 410979995 ]
+   elapsed time: 11.6785ms    (std::chrono Measured)
+    [   0  46  56  69 107 107 122 148 181 229 275 277 314 ... 410917332 410917365 ]
     passed
 ==== naive scan, power-of-two ====
-   elapsed time: 5.20397ms    (CUDA Measured)
+   elapsed time: 5.64531ms    (CUDA Measured)
     passed
 ==== naive scan, non-power-of-two ====
-   elapsed time: 5.53779ms    (CUDA Measured)
+   elapsed time: 5.0217ms    (CUDA Measured)
     passed
 ==== work-efficient scan, power-of-two ====
-   elapsed time: 2.68493ms    (CUDA Measured)
+   elapsed time: 3.21946ms    (CUDA Measured)
     passed
 ==== work-efficient scan, non-power-of-two ====
-   elapsed time: 2.37363ms    (CUDA Measured)
+   elapsed time: 2.62963ms    (CUDA Measured)
     passed
 ==== thrust scan, power-of-two ====
-   elapsed time: 1.52678ms    (CUDA Measured)
+   elapsed time: 1.34349ms    (CUDA Measured)
     passed
 ==== thrust scan, non-power-of-two ====
-   elapsed time: 1.90054ms    (CUDA Measured)
+   elapsed time: 1.5104ms    (CUDA Measured)
     passed
 
 *****************************
 ** STREAM COMPACTION TESTS **
 *****************************
-    [   3   3   0   2   3   3   0   2   0   0   1   0   2 ...   2   0 ]
+    [   2   2   0   3   3   0   3   3   2   0   0   2   0 ...   0   0 ]
 ==== cpu compact without scan, power-of-two ====
-   elapsed time: 39.9029ms    (std::chrono Measured)
-    [   3   3   2   3   3   2   1   2   1   3   2   3   2 ...   2   2 ]
+   elapsed time: 33.1457ms    (std::chrono Measured)
+    [   2   2   3   3   3   3   2   2   1   3   1   1   2 ...   2   2 ]
     passed
 ==== cpu compact without scan, non-power-of-two ====
-   elapsed time: 35.6129ms    (std::chrono Measured)
-    [   3   3   2   3   3   2   1   2   1   3   2   3   2 ...   2   2 ]
+   elapsed time: 34.8257ms    (std::chrono Measured)
+    [   2   2   3   3   3   3   2   2   1   3   1   1   2 ...   1   2 ]
     passed
 ==== cpu compact with scan ====
-   elapsed time: 99.8712ms    (std::chrono Measured)
-    [   3   3   2   3   3   2   1   2   1   3   2   3   2 ...   2   2 ]
+   elapsed time: 83.9328ms    (std::chrono Measured)
+    [   2   2   3   3   3   3   2   2   1   3   1   1   2 ...   2   2 ]
     passed
 ==== work-efficient compact, power-of-two ====
-   elapsed time: 2.37261ms    (CUDA Measured)
+   elapsed time: 2.35418ms    (CUDA Measured)
     passed
 ==== work-efficient compact, non-power-of-two ====
-   elapsed time: 2.30605ms    (CUDA Measured)
+   elapsed time: 5.15379ms    (CUDA Measured)
     passed
 ==== thrust compact, power-of-two ====
-   elapsed time: 1.77309ms    (CUDA Measured)
+   elapsed time: 1.65043ms    (CUDA Measured)
     passed
 ==== thrust compact, non-power-of-two ====
-   elapsed time: 1.75958ms    (CUDA Measured)
+   elapsed time: 1.6233ms    (CUDA Measured)
     passed
 
 **********************
 ** RADIX SORT TESTS **
 **********************
-    [  16  17  22  41   0  47   7  17  18  22  33   6  37 ...  27   0 ]
+    [   3  38  24  29  29  19   1  28   4  18   6  26  39 ...  10   0 ]
 ==== thrust sort, power-of-two ====
     [   0   0   0   0   0   0   0   0   0   0   0   0   0 ...  49  49 ]
 ==== work-efficient sort, power-of-two ====
+    [   0   0   0   0   0   0   0   0   0   0   0   0   0 ...  49  49 ]
     passed
 ```
