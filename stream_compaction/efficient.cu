@@ -17,7 +17,7 @@ namespace StreamCompaction {
         }
 
         __global__ void kernEfficientScan(int n, int* odata, const int* idata, int* blockSum) {
-            int id = blockIdx.x * blockDim.x + threadIdx.x;
+            //int id = blockIdx.x * blockDim.x + threadIdx.x;
             int thid = threadIdx.x;
             int size = 2 * blockDim.x;
             int offset = 1;
@@ -185,7 +185,7 @@ namespace StreamCompaction {
          */
         int compact(int n, int *odata, const int *idata) {
             // TODO
-            int threads = 1024;
+            int threads = 512;
             int blocks = (n + threads - 1) / threads; // ceil
 
             // Allocate memory on device
@@ -236,6 +236,67 @@ namespace StreamCompaction {
             cudaFree(d_indices);
 
             return count;
+        }
+
+        void sort(int n, int* odata, const int* idata) {
+            int threads = 512; // temp
+            int blocks = (n + threads - 1) / threads; // temp
+
+            // Allocate memory on device
+            int* d_odata, *d_idata, *d_revBits, *d_falses, *d_trues, *d_indices;
+
+            cudaMalloc(&d_odata, n * sizeof(int));
+            checkCUDAError("Efficient::sort::cudaMalloc d_odata fails!");
+
+            cudaMalloc(&d_idata, n * sizeof(int));
+            checkCUDAError("Efficient::sort::cudaMalloc d_idata fails!");
+
+            cudaMalloc(&d_revBits, n * sizeof(int));
+            checkCUDAError("Efficient::sort::cudaMalloc d_bits fails!");
+
+            cudaMalloc(&d_falses, n * sizeof(int));
+            checkCUDAError("Efficient::sort::cudaMalloc d_falses fails!");
+
+            cudaMalloc(&d_trues, n * sizeof(int));
+            checkCUDAError("Efficient::sort::cudaMalloc d_trues fails!");
+
+            cudaMalloc(&d_indices, n * sizeof(int));
+            checkCUDAError("Efficient::sort::cudaMalloc d_indices fails!");
+
+            // Copy memory to device
+            cudaMemcpy(d_idata, idata, n * sizeof(int), cudaMemcpyHostToDevice);
+            checkCUDAError("Efficient::sort::cudaMemcpyHostToDevice fails!");
+
+            for (int i = 0; i < 32; ++i) {
+                // Map to bit
+                Common::kernMapToBit<<<blocks, threads>>>(n, d_revBits, d_idata, i);
+                checkCUDAError("Common::kernMapToBit fails!");
+
+                // Scan the reversed bits
+                scan(n, d_falses, d_revBits);
+
+                // Get total falses
+                int lastRevBit, lastFalse;
+                cudaMemcpy(&lastRevBit, d_revBits + (n - 1), sizeof(int), cudaMemcpyDeviceToHost);
+                cudaMemcpy(&lastFalse, d_falses + (n - 1), sizeof(int), cudaMemcpyDeviceToHost);
+                int totalFalses = lastRevBit + lastFalse;
+
+                // Get indices
+                Common::kernRadixScatter<<<blocks, threads>>>(n, totalFalses, d_odata, d_revBits, d_falses, d_idata);
+
+                int* temp = d_idata;
+                d_idata = d_odata;
+                d_odata = temp;
+            }
+
+            cudaMemcpy(odata, d_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
+
+            cudaFree(d_odata);
+            cudaFree(d_idata);
+            cudaFree(d_revBits);
+            cudaFree(d_falses);
+            cudaFree(d_trues);
+            cudaFree(d_indices);
         }
     }
 }

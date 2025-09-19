@@ -4,6 +4,7 @@
 #include <thrust/host_vector.h>
 #include <thrust/scan.h>
 #include <thrust/remove.h>
+#include <thrust/sort.h>
 #include "common.h"
 #include "thrust.h"
 
@@ -59,6 +60,14 @@ namespace StreamCompaction {
             thrust::copy(d_in.begin(), new_end, odata);
 
             return new_size;
+        }
+
+        void sort(int n, int* odata, const int* idata) {
+            thrust::device_vector<int> d_in(idata, idata + n);
+
+            thrust::sort(d_in.begin(), d_in.end());
+
+            thrust::copy(d_in.begin(), d_in.end(), odata);
         }
     }
 }

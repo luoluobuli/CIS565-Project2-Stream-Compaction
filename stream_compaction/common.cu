@@ -49,5 +49,28 @@ namespace StreamCompaction {
             }
         }
 
+        __global__ void kernMapToBit(int n, int* revBits, const int* idata, int pass) {
+            int id = threadIdx.x + blockIdx.x * blockDim.x;
+            if (id >= n) return;
+
+            int bit = (idata[id] >> pass) & 1;
+            revBits[id] = 1 - bit;
+        }
+
+        __global__ void kernRadixScatter(int n, int totalFalses, int* odata, const int* revBits, const int* falses, const int* idata) {
+            int id = threadIdx.x + blockIdx.x * blockDim.x;
+            if (id >= n) return;
+
+            int t = id - falses[id] + totalFalses;
+
+            __syncthreads();
+
+            int index = revBits[id] ? falses[id] : t;
+
+            __syncthreads();
+
+            odata[index] = idata[id];
+        }
+
     }
 }

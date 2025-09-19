@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
     //printArray(count, c, true);
     printCmpLenResult(count, expectedNPOT, b, c);
 
-    // Thrust
+    // Thrust compaction
     zeroArray(SIZE, c);
     printDesc("thrust compact, power-of-two");
     count = StreamCompaction::Thrust::compact(SIZE, c, a);
@@ -161,6 +161,31 @@ int main(int argc, char* argv[]) {
     printElapsedTime(StreamCompaction::Thrust::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
     //printArray(NPOT, c, true);
     printCmpLenResult(count, expectedNPOT, b, c);
+
+
+    // Radix sort tests
+    printf("\n");
+    printf("**********************\n");
+    printf("** RADIX SORT TESTS **\n");
+    printf("**********************\n");
+
+    genArray(SIZE - 1, a, 50);  // Leave a 0 at the end to test that edge case
+    a[SIZE - 1] = 0;
+    printArray(SIZE, a, true);
+
+    zeroArray(SIZE, b); // Use as reference
+    printDesc("thrust sort, power-of-two");
+    StreamCompaction::Thrust::sort(SIZE, b, a);
+    //printElapsedTime(StreamCompaction::Thrust::timer().getCpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+    printArray(SIZE, b, true);
+
+    zeroArray(SIZE, c);
+    printDesc("work-efficient sort, power-of-two");
+    StreamCompaction::Efficient::sort(SIZE, c, a);
+    //printElapsedTime(StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+    printArray(SIZE, c, true);
+    printCmpResult(SIZE, b, c);
+
 
     system("pause"); // stop Win32 console from closing on exit
     delete[] a;
