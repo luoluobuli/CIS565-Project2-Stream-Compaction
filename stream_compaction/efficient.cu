@@ -105,7 +105,7 @@ namespace StreamCompaction {
             int pad_n = 1 << ilog2ceil(n);
 
             // Assign hreads and blocks
-            int threads = 1024;
+            int threads = 512;
             int blocks = (pad_n / 2 + threads - 1) / threads; // ceil
 
             // Allocate memory on host

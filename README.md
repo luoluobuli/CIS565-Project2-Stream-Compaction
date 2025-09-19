@@ -72,17 +72,27 @@ I also implemented stream compaction using Thrust in `Thrust::compact` with the 
 
 
 ## 3. Performance Analysis
+### Block size optimization
+![](images/graph3.png)
+Based on the test, performance is best with the block size of 512.
+
 ### Scan
 ![](images/graph1.png)
 For smaller array sizes, CPU performs better than GPU due to lower overhead in launching kernels and managing memory transfers. However, as the array size grows, the parallelism of the GPU becomes more effective, and all GPU algorithms begin to perform better than CPU. Among the GPU implementations, the work-efficient scan consistently works faster than the naive version, while Thrust achieves the best performance overall. 
-
-I think my algorithm involves a lot of memory copying between the CPU and GPU, which is slow. In addition, threads are not fully utilized during the tree traversals.
 
 ### Stream Compaction
 ![](images/graph2.png)
 Stream compaction shows similar pattern - for smaller array size, CPU performs better. When the array size become larger, the cost of CPU grows much more faster, and GPU algorithms beats the CPU's. Thrust still performs better. 
 
-I think except the slower performance in `Efficient::scan`, repeated memory allocation also hurts performance. Since `scan` is called within `compact`, and both functions allocate device memory for `idata` and `odata`, this results in redundant allocations.
+### Nsight Analysis
+Thrust: `thrust::exclusive_scan` and `thrust::remove_if`
+![](images/report1.png)
+Work-efficient scan: `kernEfficientScan`
+![](images/report2.png)
+Stream compaction: `kernMapToBoolean` and `kernScatter`
+![](images/report3.png)
+
+The memory throughput in thrust kernels is very high, meaning that data is loaded efficiently and bandwidth is well utilized. My work-efficient scan shows much lower memory throughput, meaning it does not achieve ideal bandwidth. Furthermore, the compute throughput of my kernels is also quite low, meaning that threads are not being kept fully busy. Thrust's scan and compaction kernels, instead, achieve relatively high compute throughput.
 
 ### Test output (array size: 2^24)
 ```

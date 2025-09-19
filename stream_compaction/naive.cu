@@ -64,7 +64,7 @@ namespace StreamCompaction {
          */
         void scan(int n, int *odata, const int *idata) {
             // TODO
-            int threads = 1024;
+            int threads = 512;
             int blocks = (n + threads - 1) / threads; // ceil
             
             // Allocate memory on host
